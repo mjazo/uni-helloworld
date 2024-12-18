@@ -1,0 +1,23 @@
+version: '3.8'
+services:
+  jenkins:
+    build: .
+    privileged: true
+    user: root
+    ports:
+     - 8080:8080
+     - 50000:50000
+    container_name: jenkins
+    volumes:
+     - /var/run/docker.sock:/var/run/docker.sock
+     - ./jenkins_home:/var/jenkins_home
+
+  wiremock:
+    image: wiremock/wiremock:3.10.0
+    container_name: wiremock
+    ports:
+      - 9090:8080
+    volumes:
+      - ./wiremock/extensions:/var/wiremock/extensions
+      - ./wiremock/__files:/home/wiremock/__files
+      - ./wiremock/mappings:/home/wiremock/mappings
