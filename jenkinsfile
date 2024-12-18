@@ -5,8 +5,7 @@ pipeline {
         stage('GetCode') {
             agent { label 'agent1' }
             steps {
-                echo '-- Get Code --'
-                git 'https://github.com/mjazo/uni-helloworld.git'
+                git branch: 'develop', url: 'https://github.com/mjazo/uni-helloworld.git'
                 sh '''
                     ls -la
                     echo $WORKSPACE
