@@ -55,6 +55,7 @@ pipeline {
                                 echo $WORKSPACE
                                 export FLASK_APP=app/api.py
                                 flask run -p 5001 &
+                                sleep 2
                                 python3 -m pytest --junitxml=result-rest.xml test/rest
                             '''
                             stash includes: '**/*', name: 'files'
