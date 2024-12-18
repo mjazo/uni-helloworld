@@ -1,8 +1,9 @@
 pipeline {
-    agent any
+    agent none
 
     stages {
         stage('GetCode') {
+            agent { label 'agent1' }
             steps {
                 echo '-- Get Code --'
                 git 'https://github.com/mjazo/uni-helloworld.git'
@@ -10,41 +11,66 @@ pipeline {
                     ls -la
                     echo $WORKSPACE
                 '''
+                stash includes: '**/*', name: 'files'
             }
         }
         stage('Build') {
+            agent { label 'agent1' }
             steps {
                 echo 'NO HAY QUE HACER, ESTO ES PYTHON'
+                echo '----> USING AGENT 1 <----'
+                sh '''
+                    whoami
+                    hostname
+                '''
             }
         }
         stage('Tests') {
             parallel {
                 stage('Unit') {
+                    agent { label 'agent2' }
                     steps {
                         catchError(buildResult: 'UNSTABLE', stageResult: 'FAILURE') {
+                            unstash 'files'
+                            echo '----> USING AGENT 2 <----'
                             sh '''
+                                whoami
+                                hostname
                                 export PYTHONPATH=$WORKSPACE
-                                pytest --junitxml=result-unit.xml test/unit
+                                python3 -m pytest --junitxml=result-unit.xml test/unit
                             '''
+                            stash includes: '**/*', name: 'files'
                         }
                     }
                 }
                 stage('Rest') {
+                    agent { label 'agent2' }
                     steps {
                         catchError(buildResult: 'UNSTABLE', stageResult: 'FAILURE') {
+                            unstash 'files'
                             sh '''
                                 export FLASK_APP=app/api.py
-                                flask run -p 8081 &
-                                pytest --junitxml=result-rest.xml test/rest
+                                flask run -p 5001 &
+                                python3 -m pytest --junitxml=result-rest.xml test/rest
                             '''
+                            stash includes: '**/*', name: 'files'
                         }
                     }
                 }
             }
         }
         stage('Results') {
+            agent { label 'agent3' }
             steps {
-                junit 'result*.xml'
+                unstash 'files'
+                echo '----> USING AGENT 3 <----'
+                sh '''
+                    whoami
+                    hostname
+                '''
+                catchError(buildResult: 'UNSTABLE', stageResult: 'FAILURE') {
+                    junit 'result*.xml'
+                }
             }
         }
     }

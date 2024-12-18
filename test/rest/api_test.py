@@ -7,8 +7,8 @@ import pytest
 
 #BASE_URL = "http://localhost:5000"
 #BASE_URL_MOCK = "http://localhost:9090"
-BASE_URL = "http://localhost:8081"
-BASE_URL_MOCK = "http://wiremock:8080"
+BASE_URL = "http://localhost:5001"
+BASE_URL_MOCK = "https://wiremock.petroil.dev"
 DEFAULT_TIMEOUT = 2  # in secs
 
 @pytest.mark.api
