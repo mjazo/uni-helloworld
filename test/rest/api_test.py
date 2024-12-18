@@ -6,9 +6,9 @@ from urllib.request import urlopen
 import pytest
 
 #BASE_URL = "http://localhost:5000"
-#BASE_URL_MOCK = "http://localhost:9090"
+BASE_URL_MOCK = "http://localhost:9090"
 BASE_URL = "http://localhost:5001"
-BASE_URL_MOCK = "https://wiremock.petroil.dev"
+#BASE_URL_MOCK = "https://wiremock.petroil.dev"
 DEFAULT_TIMEOUT = 3  # in secs
 
 @pytest.mark.api
