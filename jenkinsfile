@@ -22,6 +22,7 @@ pipeline {
                 sh '''
                     whoami
                     hostname
+                    echo $WORKSPACE
                 '''
             }
         }
@@ -36,6 +37,7 @@ pipeline {
                             sh '''
                                 whoami
                                 hostname
+                                echo $WORKSPACE
                                 export PYTHONPATH=$WORKSPACE
                                 python3 -m pytest --junitxml=result-unit.xml test/unit
                             '''
@@ -49,6 +51,9 @@ pipeline {
                         catchError(buildResult: 'UNSTABLE', stageResult: 'FAILURE') {
                             unstash 'files'
                             sh '''
+                                whoami
+                                hostname
+                                echo $WORKSPACE
                                 export FLASK_APP=app/api.py
                                 flask run -p 5001 &
                                 python3 -m pytest --junitxml=result-rest.xml test/rest
@@ -67,6 +72,7 @@ pipeline {
                 sh '''
                     whoami
                     hostname
+                    echo $WORKSPACE
                 '''
                 catchError(buildResult: 'UNSTABLE', stageResult: 'FAILURE') {
                     junit 'result*.xml'
