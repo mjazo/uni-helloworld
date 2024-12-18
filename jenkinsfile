@@ -1,0 +1,51 @@
+pipeline {
+    agent any
+
+    stages {
+        stage('GetCode') {
+            steps {
+                echo '-- Get Code --'
+                git 'https://github.com/mjazo/uni-helloworld.git'
+                sh '''
+                    ls -la
+                    echo $WORKSPACE
+                '''
+            }
+        }
+        stage('Build') {
+            steps {
+                echo 'NO HAY QUE HACER, ESTO ES PYTHON'
+            }
+        }
+        stage('Tests') {
+            parallel {
+                stage('Unit') {
+                    steps {
+                        catchError(buildResult: 'UNSTABLE', stageResult: 'FAILURE') {
+                            sh '''
+                                export PYTHONPATH=$WORKSPACE
+                                pytest --junitxml=result-unit.xml test/unit
+                            '''
+                        }
+                    }
+                }
+                stage('Rest') {
+                    steps {
+                        catchError(buildResult: 'UNSTABLE', stageResult: 'FAILURE') {
+                            sh '''
+                                export FLASK_APP=app/api.py
+                                flask run -p 8081 &
+                                pytest --junitxml=result-rest.xml test/rest
+                            '''
+                        }
+                    }
+                }
+            }
+        }
+        stage('Results') {
+            steps {
+                junit 'result*.xml'
+            }
+        }
+    }
+}
