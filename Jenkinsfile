@@ -13,21 +13,46 @@ pipeline {
                 stash includes: '**/*', name: 'source'
             }
         }
-        stage('Unit') {
-            steps {
-                cleanWs()
-                unstash 'source'
-                catchError(buildResult: 'UNSTABLE', stageResult: 'FAILURE') {
-                    sh '''
-                        echo $WORKSPACE
-                        export PYTHONPATH=$WORKSPACE
-                        python3 -m pytest --junitxml=result-unit.xml test/unit
-                    '''
-                    junit 'result*.xml'
+        stage('Tests') {
+            parallel {
+                stage('Unit') {
+                    steps {
+                        cleanWs()
+                        catchError(buildResult: 'UNSTABLE', stageResult: 'FAILURE') {
+                            unstash 'source'
+                            sh '''
+                                echo $WORKSPACE
+                                export PYTHONPATH=$WORKSPACE
+                                python3 -m pytest --junitxml=result-unit.xml test/unit
+                            '''
+                            junit 'result*.xml'
+                            stash includes: '**/*', name: 'source'
+                        }
+                    }
+                }
+                stage('Rest') {
+                    steps {
+                        cleanWs()
+                        unstash 'source'
+                        catchError(buildResult: 'UNSTABLE', stageResult: 'FAILURE') {
+                            fileOperations([
+                                fileDownloadOperation(userName: '', password: '', proxyHost: '', proxyPort: '', targetFileName: 'wiremock.jar', url: 'https://repo1.maven.org/maven2/org/wiremock/wiremock-standalone/3.10.0/wiremock-standalone-3.10.0.jar', targetLocation: '.',)
+                            ])
+                            sh '''
+                                echo $WORKSPACE
+                                java -jar wiremock.jar --port 9090 --root-dir test/wiremock &
+                                export FLASK_APP=app/api.py
+                                flask run -p 5001 &
+                                sleep 5
+                                python3 -m pytest --junitxml=result-rest.xml test/rest
+                            '''
+                            stash includes: '**/*', name: 'source'
+                        }
+                    }
                 }
             }
         }
-         stage('Coverage') {
+        stage('Coverage') {
             steps {
                 cleanWs()
                 unstash 'source'
@@ -36,7 +61,7 @@ pipeline {
                     python3 -m coverage xml
                 '''
                 catchError(buildResult: 'UNSTABLE', stageResult: 'FAILURE') {
-                    cobertura coberturaReportFile: 'coverage.xml', conditionalCoverageTargets: '100,0,80', lineCoverageTargets: '100,0,90'
+                    cobertura coberturaReportFile: 'coverage.xml', onlyStable: false, conditionalCoverageTargets: '100,0,80', lineCoverageTargets: '100,0,95'
                 }
             }
         }
@@ -47,7 +72,7 @@ pipeline {
                 sh '''
                     python3 -m flake8 --format=pylint --exit-zero app >flake8.out
                 '''
-                recordIssues tools: [flake8(name: 'Flake8', pattern: 'flake8.out')], qualityGates: [[threshold: 15, type: 'TOTAL', unstable: true], [threshold: 16, type: 'TOTAL', unstable: false]]
+                recordIssues tools: [flake8(name: 'Flake8', pattern: 'flake8.out')], qualityGates: [[threshold: 8, type: 'TOTAL', unstable: true], [threshold: 10, type: 'TOTAL', unstable: false]]
             }
         }
         stage('Security') {
@@ -57,7 +82,7 @@ pipeline {
                 sh '''
                     python3 -m bandit --exit-zero -r . -f custom -o bandit.out --msg-template "{abspath}:{line}: {severity}: {test_id}: {msg}"
                 '''
-                recordIssues tools: [pyLint(name: 'Bandit', pattern: 'bandit.out')], qualityGates: [[threshold: 1, type: 'TOTAL', unstable: true], [threshold: 2, type: 'TOTAL', unstable: false]]
+                recordIssues tools: [pyLint(name: 'Bandit', pattern: 'bandit.out')], qualityGates: [[threshold: 2, type: 'TOTAL', unstable: true], [threshold: 4, type: 'TOTAL', unstable: false]]
             }
         }
         stage('Performance'){
@@ -68,7 +93,7 @@ pipeline {
                     export FLASK_APP=app/api.py
                     flask run -p 5000 &
                     sleep 5
-                    jmeter -n -t test/jmeter/flask.jmx -f -l flask.jtl
+                    jmeter -n -t test/jmeter/testplan.jmx -f -l flask.jtl
                 '''
                 perfReport sourceDataFiles: 'flask.jtl'
             }
