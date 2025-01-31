@@ -4,15 +4,19 @@ pipeline {
     stages {
         stage('GetCode') {
             steps {
+                cleanWs()
                 git branch: 'develop', url: 'https://github.com/mjazo/uni-helloworld.git'
                 sh '''
                     ls -la
                     echo $WORKSPACE
                 '''
+                stash includes: '**/*', name: 'source'
             }
         }
         stage('Unit') {
             steps {
+                cleanWs()
+                unstash 'source'
                 catchError(buildResult: 'UNSTABLE', stageResult: 'FAILURE') {
                     sh '''
                         echo $WORKSPACE
@@ -25,6 +29,8 @@ pipeline {
         }
          stage('Coverage') {
             steps {
+                cleanWs()
+                unstash 'source'
                 sh '''
                     python3 -m coverage run --source=app --omit=app/__init__.py,app/api.py -m pytest test/unit
                     python3 -m coverage xml
@@ -36,6 +42,8 @@ pipeline {
         }
         stage('Static') {
             steps {
+                cleanWs()
+                unstash 'source'
                 sh '''
                     python3 -m flake8 --format=pylint --exit-zero app >flake8.out
                 '''
@@ -44,6 +52,8 @@ pipeline {
         }
         stage('Security') {
             steps {
+                cleanWs()
+                unstash 'source'
                 sh '''
                     python3 -m bandit --exit-zero -r . -f custom -o bandit.out --msg-template "{abspath}:{line}: {severity}: {test_id}: {msg}"
                 '''
@@ -52,6 +62,8 @@ pipeline {
         }
         stage('Performance'){
             steps {
+                cleanWs()
+                unstash 'source'
                 sh '''
                     export FLASK_APP=app/api.py
                     flask run -p 5000 &
