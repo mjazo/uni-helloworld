@@ -32,6 +32,7 @@ def substract(op_1, op_2):
     except TypeError as e:
         return (str(e), http.client.BAD_REQUEST, HEADERS)
 
+
 @api_application.route("/calc/multiply/<op_1>/<op_2>", methods=["GET"])
 def multiply(op_1, op_2):
     try:
@@ -39,6 +40,7 @@ def multiply(op_1, op_2):
         return ("{}".format(CALCULATOR.multiply(num_1, num_2)), http.client.OK, HEADERS)
     except TypeError as e:
         return (str(e), http.client.BAD_REQUEST, HEADERS)
+
 
 @api_application.route("/calc/divide/<op_1>/<op_2>", methods=["GET"])
 def divide(op_1, op_2):
