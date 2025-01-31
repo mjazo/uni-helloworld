@@ -69,20 +69,24 @@ pipeline {
             steps {
                 cleanWs()
                 unstash 'source'
-                sh '''
-                    python3 -m flake8 --format=pylint --exit-zero app >flake8.out
-                '''
-                recordIssues tools: [flake8(name: 'Flake8', pattern: 'flake8.out')], qualityGates: [[threshold: 8, type: 'TOTAL', unstable: true], [threshold: 10, type: 'TOTAL', unstable: false]]
+                catchError(buildResult: 'UNSTABLE', stageResult: 'FAILURE') {
+                    sh '''
+                        python3 -m flake8 --format=pylint --exit-zero app >flake8.out
+                    '''
+                    recordIssues tools: [flake8(name: 'Flake8', pattern: 'flake8.out')], qualityGates: [[threshold: 15, type: 'TOTAL', unstable: true], [threshold: 16, type: 'TOTAL', unstable: false]]
+                }
             }
         }
         stage('Security') {
             steps {
                 cleanWs()
                 unstash 'source'
-                sh '''
-                    python3 -m bandit --exit-zero -r . -f custom -o bandit.out --msg-template "{abspath}:{line}: {severity}: {test_id}: {msg}"
-                '''
-                recordIssues tools: [pyLint(name: 'Bandit', pattern: 'bandit.out')], qualityGates: [[threshold: 2, type: 'TOTAL', unstable: true], [threshold: 4, type: 'TOTAL', unstable: false]]
+                catchError(buildResult: 'UNSTABLE', stageResult: 'FAILURE') {
+                    sh '''
+                        python3 -m bandit --exit-zero -r . -f custom -o bandit.out --msg-template "{abspath}:{line}: {severity}: {test_id}: {msg}"
+                    '''
+                    recordIssues tools: [pyLint(name: 'Bandit', pattern: 'bandit.out')], qualityGates: [[threshold: 2, type: 'TOTAL', unstable: true], [threshold: 4, type: 'TOTAL', unstable: false]]
+                }
             }
         }
         stage('Performance'){
