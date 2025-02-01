@@ -40,7 +40,7 @@ pipeline {
                 cleanWs()
                 unstash 'source'
                 sh '''
-                    python3 -m coverage run --source=app --omit=app/__init__.py,app/api.py -m pytest test/unit
+                    python3 -m coverage run --branch --source=app --omit=app/__init__.py,app/api.py -m pytest test/unit
                     python3 -m coverage xml
                 '''
                 catchError(buildResult: 'UNSTABLE', stageResult: 'FAILURE') {
