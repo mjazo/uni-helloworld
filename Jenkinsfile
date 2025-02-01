@@ -13,42 +13,25 @@ pipeline {
                 stash includes: '**/*', name: 'source'
             }
         }
-        stage('Tests') {
-            parallel {
-                stage('Unit') {
-                    steps {
-                        cleanWs()
-                        catchError(buildResult: 'UNSTABLE', stageResult: 'FAILURE') {
-                            unstash 'source'
-                            sh '''
-                                echo $WORKSPACE
-                                export PYTHONPATH=$WORKSPACE
-                                python3 -m pytest --junitxml=result-unit.xml test/unit
-                            '''
-                            junit 'result*.xml'
-                            stash includes: '**/*', name: 'source'
-                        }
-                    }
-                }
-                stage('Rest') {
-                    steps {
-                        cleanWs()
-                        unstash 'source'
-                        catchError(buildResult: 'UNSTABLE', stageResult: 'FAILURE') {
-                            fileOperations([
-                                fileDownloadOperation(userName: '', password: '', proxyHost: '', proxyPort: '', targetFileName: 'wiremock.jar', url: 'https://repo1.maven.org/maven2/org/wiremock/wiremock-standalone/3.10.0/wiremock-standalone-3.10.0.jar', targetLocation: '.',)
-                            ])
-                            sh '''
-                                echo $WORKSPACE
-                                java -jar wiremock.jar --port 9090 --root-dir test/wiremock &
-                                export FLASK_APP=app/api.py
-                                flask run -p 5001 &
-                                sleep 5
-                                python3 -m pytest --junitxml=result-rest.xml test/rest
-                            '''
-                            stash includes: '**/*', name: 'source'
-                        }
-                    }
+        stage('Unit') {
+            steps {
+                cleanWs()
+                catchError(buildResult: 'UNSTABLE', stageResult: 'FAILURE') {
+                    unstash 'source'
+                    fileOperations([
+                        fileDownloadOperation(userName: '', password: '', proxyHost: '', proxyPort: '', targetFileName: 'wiremock.jar', url: 'https://repo1.maven.org/maven2/org/wiremock/wiremock-standalone/3.10.0/wiremock-standalone-3.10.0.jar', targetLocation: '.',)
+                    ])
+                    sh '''
+                        echo $WORKSPACE
+                        export PYTHONPATH=$WORKSPACE
+                        java -jar wiremock.jar --port 9090 --root-dir test/wiremock &
+                        export FLASK_APP=app/api.py
+                        flask run -p 5001 &
+                        sleep 7
+                        python3 -m pytest test/unit test/rest --junitxml=result.xml
+                    '''
+                    junit 'result.xml'
+                    stash includes: '**/*', name: 'source'
                 }
             }
         }
