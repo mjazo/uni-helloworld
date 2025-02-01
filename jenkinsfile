@@ -75,7 +75,7 @@ pipeline {
                     export FLASK_APP=app/api.py
                     flask run -p 5000 &
                     sleep 5
-                    jmeter -n -t test/jmeter/testplan.jmx -f -l flask.jtl
+                    jmeter -n -t test/jmeter/flask.jmx -f -l flask.jtl
                 '''
                 perfReport sourceDataFiles: 'flask.jtl'
                 cleanWs()
