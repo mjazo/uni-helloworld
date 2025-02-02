@@ -1,76 +1,50 @@
 pipeline {
-    agent none
+    agent any
 
     stages {
         stage('GetCode') {
-            agent { label 'agent1' }
             steps {
-                echo '-- Get Code --'
                 git 'https://github.com/mjazo/uni-helloworld.git'
                 sh '''
                     ls -la
                     echo $WORKSPACE
                 '''
-                stash includes: '**/*', name: 'files'
+                stash includes: '**/*', name: 'source'
+                cleanWs()
             }
         }
-        stage('Build') {
-            agent { label 'agent1' }
+        stage('Unit') {
             steps {
-                echo 'NO HAY QUE HACER, ESTO ES PYTHON'
-                echo '----> USING AGENT 1 <----'
-                sh '''
-                    whoami
-                    hostname
-                '''
-            }
-        }
-        stage('Tests') {
-            parallel {
-                stage('Unit') {
-                    agent { label 'agent2' }
-                    steps {
-                        catchError(buildResult: 'UNSTABLE', stageResult: 'FAILURE') {
-                            unstash 'files'
-                            echo '----> USING AGENT 2 <----'
-                            sh '''
-                                whoami
-                                hostname
-                                export PYTHONPATH=$WORKSPACE
-                                python3 -m pytest --junitxml=result-unit.xml test/unit
-                            '''
-                            stash includes: '**/*', name: 'files'
-                        }
-                    }
-                }
-                stage('Rest') {
-                    agent { label 'agent2' }
-                    steps {
-                        catchError(buildResult: 'UNSTABLE', stageResult: 'FAILURE') {
-                            unstash 'files'
-                            sh '''
-                                export FLASK_APP=app/api.py
-                                flask run -p 5001 &
-                                python3 -m pytest --junitxml=result-rest.xml test/rest
-                            '''
-                            stash includes: '**/*', name: 'files'
-                        }
-                    }
+                catchError(buildResult: 'UNSTABLE', stageResult: 'FAILURE') {
+                    unstash 'source'
+                    fileOperations([
+                        fileDownloadOperation(userName: '', password: '', proxyHost: '', proxyPort: '', targetFileName: 'wiremock.jar', url: 'https://repo1.maven.org/maven2/org/wiremock/wiremock-standalone/3.10.0/wiremock-standalone-3.10.0.jar', targetLocation: '.',)
+                    ])
+                    sh '''
+                        echo $WORKSPACE
+                        export PYTHONPATH=$WORKSPACE
+                        java -jar wiremock.jar --port 9090 --root-dir test/wiremock &
+                        export FLASK_APP=app/api.py
+                        flask run -p 5001 &
+                        sleep 7
+                        python3 -m pytest test/unit test/rest --junitxml=result.xml
+                    '''
+                    junit 'result.xml'
+                    cleanWs()
                 }
             }
         }
-        stage('Results') {
-            agent { label 'agent3' }
+        stage('Coverage') {
             steps {
-                unstash 'files'
-                echo '----> USING AGENT 3 <----'
+                unstash 'source'
                 sh '''
-                    whoami
-                    hostname
+                    python3 -m coverage run --branch --source=app --omit=app/__init__.py,app/api.py -m pytest test/unit
+                    python3 -m coverage xml
                 '''
                 catchError(buildResult: 'UNSTABLE', stageResult: 'FAILURE') {
-                    junit 'result*.xml'
+                    cobertura coberturaReportFile: 'coverage.xml', onlyStable: false, conditionalCoverageTargets: '100,0,80', lineCoverageTargets: '100,0,95'
                 }
+                cleanWs()
             }
         }
     }
