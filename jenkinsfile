@@ -4,7 +4,6 @@ pipeline {
     stages {
         stage('GetCode') {
             steps {
-                git 'https://github.com/mjazo/uni-helloworld.git'
                 git branch: 'feature_fix_coverage', url: 'https://github.com/mjazo/uni-helloworld.git'
                 sh '''
                     ls -la
